@@ -488,7 +488,7 @@ static PyObject*
     }
     if (!MEMVIEWTYPE_CHECK(other_obj))
     {
-        PyErr_SetString(PyExc_Exc_TypeError, "Only MemView type available");
+        PyErr_SetString(PyExc_TypeError, "Only MemView type available");
         return NULL;
     }
     MemView* other = (MemView*) other_obj;
