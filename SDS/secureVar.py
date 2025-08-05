@@ -1,45 +1,47 @@
-import os
 from cryptoHandler import CryptoHandler
-from secureContext import SecureContext
-from memtools import MemView
+from sdsmemtools import MemView
+import os
 
 def quarterRound(a, b, c, d):
-    a.assign(MemView(a.value + b.value))
-    d.assign(d.xor(a))
-    d.assign(d.lshift(16))
-    c.assign(MemView(c.value + d.value))
-    b.assign(b.xor(c))
-    b.assign(b.lshift(12))
-    a.assign(MemView(a.value + b.value))
-    d.assign(d.xor(a))
-    d.assign(d.lshift(8))
-    c.assign(MemView(c.value + d.value))
-    b.assign(b.xor(c))
-    b.assign(b.lshift(7))
+    a = a.badd(b)
+    d = d.xor(a)
+    d = d.lshift(16)
+
+    c = c.badd(d)
+    b = b.xor(c)
+    b = b.lshift(12)
+
+    a = a.badd(b)
+    d = d.xor(a)
+    d = d.lshift(8)
+
+    c = c.badd(d)
+    b = b.xor(c)
+    b = b.lshift(7)
 
     return a, b, c, d
 
 def makeKeyStream(key, Nonce):
     # 'expand 32-byte k' to ASCII
-    const1 = MemView(1631)        # 00000000 00000000 00000110 01011111
-    const2 = MemView(472968905)   # 00011100 00110000 11101110 11001001
-    const3 = MemView(108616587)   # 00000110 01111001 01011011 10001011
-    const4 = MemView(3477909611)  # 11001111 01001100 10110000 01101011
+    const1 = MemView("expa")
+    const2 = MemView("nd 3")
+    const3 = MemView("2-by")
+    const4 = MemView("te k")
 
     key1 = key.slicing(0, 32)
-    key2 = key.slicing(33, 32)
-    key3 = key.slicing(65, 32)
-    key4 = key.slicing(97, 32)
-    key5 = key.slicing(129, 32)
-    key6 = key.slicing(161, 32)
-    key7 = key.slicing(193, 32)
-    key8 = key.slicing(225, 32)
+    key2 = key.slicing(32, 32)
+    key3 = key.slicing(64, 32)
+    key4 = key.slicing(96, 32)
+    key5 = key.slicing(128, 32)
+    key6 = key.slicing(160, 32)
+    key7 = key.slicing(192, 32)
+    key8 = key.slicing(224, 32)
 
     counter = MemView(SecureVar.counter)
 
     nonce1 = Nonce.slicing(0, 32)
-    nonce2 = Nonce.slicing(33, 32)
-    nonce3 = Nonce.slicing(65, 32)
+    nonce2 = Nonce.slicing(32, 32)
+    nonce3 = Nonce.slicing(64, 32)
 
     for i in range(10):
         # column round
@@ -57,13 +59,41 @@ def makeKeyStream(key, Nonce):
     return const1.concat(const2).concat(const3).concat(const4).concat(key1).concat(key2).concat(key3).concat(key4).concat(key5).concat(key6).concat(key7).concat(key8).concat(counter).concat(nonce1).concat(nonce2).concat(nonce3)
 
 class SecureVar:
-    counter = None
+    counter = "cntr"
     @staticmethod
     @CryptoHandler.useKey
     def encrypt(key, plainText):
-        pass
+        target = MemView(plainText)
+        Nonce = MemView(os.urandom(48).hex())
+        cipherText = MemView("")
+        while target.bsize() > 64:
+            realTarget = target.slicing(0, 64)
+            target = target.slicing(64, target.bsize()*8-64)
+            keyStream = makeKeyStream(key, Nonce)
+            cipherText = cipherText.concat(keyStream.xor(realTarget))
+            SecureVar.counter = str(int(SecureVar.counter) + 1)
+        keyStream = makeKeyStream(key, Nonce)
+        cipherText = cipherText.concat(keyStream.slicing(0, target.bsize()*8).xor(target))
+
+        target.clear()
+        keyStream.clear()
+        SecureVar.counter = "cntr"
+        return Nonce.slicing(0, 96).concat(cipherText)
 
     @staticmethod
     @CryptoHandler.useKey
     def decrypt(key, cipherText):
-        pass
+        Nonce = cipherText.slicing(0, 96)
+        target = cipherText.slicing(96, cipherText.bsize()*8-96)
+        plainText = MemView("")
+        while target.bsize() > 64:
+            realTarget = target.slicing(0, 64)
+            target = target.slicing(64, target.bsize()*8-64)
+            keyStream = makeKeyStream(key, Nonce)
+            plainText = plainText.concat(keyStream.xor(realTarget))
+            SecureVar.counter = str(int(SecureVar.counter) + 1)
+        keyStream = makeKeyStream(key, Nonce)
+        plainText = plainText.concat(keyStream.slicing(0, target.bsize()*8).xor(target))
+
+        SecureVar.counter = "cntr"
+        return plainText
