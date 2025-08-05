@@ -1,13 +1,13 @@
 import os
 from functools import wraps
-from memtools import MemView
+from sdsmemtools import MemView
 
 class CryptoHandler:
     ephemeralKey = None
 
     @staticmethod
     def changeKey():
-        CryptoHandler.ephemeralKey = MemView(int.from_bytes(os.urandom(32), byteorder='big'))
+        CryptoHandler.ephemeralKey = MemView(str(int.from_bytes(os.urandom(32), byteorder='big')))
 
     @staticmethod
     def useKey(func):
