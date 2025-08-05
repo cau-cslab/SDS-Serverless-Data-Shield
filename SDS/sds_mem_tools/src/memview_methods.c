@@ -16,9 +16,9 @@ static PyObject* MemView_assign(MemView* self, PyObject* other);
 static PyObject* MemView_clear(MemView* self, PyObject* Py_UNUSED(ignored));
 static PyObject* MemView_value(MemView* self, PyObject* Py_UNUSED(ignored));
 static PyObject* MemView_xor(MemView *self, PyObject *other_obj);
-static PyObject* MemView_lshift(MemView *self, PyObject* args);
+static PyObject* MemView_lshift(MemView *self, PyObject* args, PyObject* kwargs);
 static PyObject* MemView_concat(MemView* self, PyObject* other_obj);
-static PyObject* MemView_slicing(MemView* self, PyObject* args);
+static PyObject* MemView_slicing(MemView *self, PyObject* args, PyObject* kwargs);
 static PyObject* MemView_bsize(MemView* self, PyObject* Py_UNUSED(ignored));
 
 static PyMemberDef MemView_members[] = {
@@ -30,7 +30,7 @@ static PyMethodDef MemView_methods[] = {
     {"clear", (PyCFunction)MemView_clear, METH_NOARGS, "Clear the memory content."},
     {"value", (PyCFunction)MemView_value, METH_NOARGS, "Return the value as bytes."},
     {"xor", (PyCFunction)MemView_xor, METH_O, "Perform XOR operation with another MemView object."},
-    {"lshift", (PyCFunction)MemView_lshift, METH_O, "Bitwise left shift."},
+    {"lshift", (PyCFunction)MemView_lshift, METH_VARARGS | METH_KEYWORDS, "Bitwise left shift."},
     {"concat", (PyCFunction)MemView_concat, METH_O, "Concatenate with another MemView object."},
     {"slicing", (PyCFunction)MemView_slicing, METH_VARARGS | METH_KEYWORDS, "Slice bits from the origin."},
     {"bsize", (PyCFunction)MemView_bsize, METH_NOARGS, "Return the byte size of the memory."},
@@ -224,8 +224,35 @@ MemView_xor(MemView *self, PyObject *other_obj)
         PyErr_SetString(PyExc_TypeError, "Only MemView type available");
         return NULL;
     }
+    MemView* other = (MemView*)other_obj;
+    if (other->type != STR_MEM_TYPE)
+    {
+        PyErr_SetString(PyExc_TypeError, "Only string type available");
+        return NULL;
+    }
+    if (other->size != self->size)
+    {
+        PyErr_SetString(PyExc_ValueError, "Size mismatch");
+        return NULL;
+    }
 
-    Py_RETURN_NONE;
+    // Generate result object
+    MemView* result = PyObject_New(MemView, &MemViewType);
+    result->data = PyMem_RawMalloc(self->size);
+    result->size = self->size;
+    result->type = STR_MEM_TYPE;
+    if (result->data == NULL)
+    {
+        Py_DECREF(result);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    // XOR operation
+    for (int i = 0; i < self->size; i++)
+        ((char*) result->data)[i] = ((char*)self->data)[i] ^ ((char*) other->data)[i];
+
+    return (PyObject*) result;
 }
 
 /**
@@ -238,9 +265,82 @@ MemView_xor(MemView *self, PyObject *other_obj)
  * @return A new MemView object with the shifted data, or NULL on failure.
  */
 static PyObject *
-MemView_lshift(MemView *self, PyObject* args)
+MemView_lshift(MemView *self, PyObject* args, PyObject* kwargs)
 {
-    Py_RETURN_NONE;
+    if (self->type != STR_MEM_TYPE)
+    {
+        PyErr_SetString(PyExc_TypeError, "Only string type available");
+        return NULL;
+    }
+
+    int shift = 0;
+    static char *kwlist[] = {"shift", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i", kwlist, &shift))
+    {
+        PyErr_SetString(PyExc_TypeError, "origin, offset are required.");
+        return NULL;
+    }
+    if (shift <= 0)
+    {
+        PyErr_SetString(PyExc_ValueError, "shift must be positive.");
+        return NULL;
+    }
+
+    // if Total bits are larger than total size, fill all zero
+    size_t total_bits = self->size * 8;
+    if ((size_t)shift >= total_bits)
+    {
+        MemView* result = PyObject_New(MemView, &MemViewType);
+        if (result == NULL)
+        {
+            PyErr_NoMemory();
+            return NULL;
+        }
+        result->size = self->size;
+        result->data = PyMem_RawCalloc(self->size, 1);
+        result->type = STR_MEM_TYPE;
+        if (result->data == NULL)
+        {
+            Py_DECREF(result);
+            PyErr_NoMemory();
+            return NULL;
+        }
+        return (PyObject*)result;
+    }
+
+    MemView* result = PyObject_New(MemView, &MemViewType);
+    if (result == NULL)
+    {
+        PyErr_NoMemory();
+        return NULL;
+    }
+    result->size = self->size;
+    result->data = PyMem_RawCalloc(self->size, 1);
+    result->type = STR_MEM_TYPE;
+    if (result->data == NULL) {
+        Py_DECREF(result);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    // Shift
+    const unsigned char* src = (const unsigned char*)self->data;
+    unsigned char* dst = (unsigned char*)result->data;
+
+    for (size_t i = 0; i < total_bits - shift; ++i) {
+        size_t src_idx = i + shift;
+        size_t src_byte = src_idx >> 3;
+        size_t src_bit = 7 - (src_idx & 7);
+        int bit_val = (src[src_byte] >> src_bit) & 1;
+
+        size_t dst_byte = i >> 3;
+        size_t dst_bit = 7 - (i & 7);
+
+        if (bit_val)
+            dst[dst_byte] |= (1u << dst_bit);
+    }
+
+    return (PyObject*)result;
 }
 
 /**
@@ -255,12 +355,30 @@ MemView_lshift(MemView *self, PyObject* args)
 static PyObject*
 MemView_concat(MemView* self, PyObject* other_obj)
 {
-     if (!MEMVIEWTYPE_CHECK(other_obj))
-     {
-         PyErr_SetString(PyExc_TypeError, "Only MemView type available");
-     }
+    if (!MEMVIEWTYPE_CHECK(other_obj))
+    {
+        PyErr_SetString(PyExc_TypeError, "Only MemView type available");
+    }
+    MemView* other = (MemView*)other_obj;
+    if (other->type != STR_MEM_TYPE)
+    {
+        PyErr_SetString(PyExc_TypeError, "Only string type available");
+        return NULL;
+    }
 
-    Py_RETURN_NONE;
+    MemView* result = PyObject_New(MemView, &MemViewType);
+    result->data = PyMem_RawMalloc(self->size+other->size);
+    result->size = self->size+other->size;
+    result->type = STR_MEM_TYPE;
+    if (result->data == NULL)
+    {
+        Py_DECREF(result);
+        PyErr_NoMemory();
+        return NULL;
+    }
+    memcpy(result->data, other->data, self->size);
+    memcpy(result->data+self->size, other->data, (size_t) other->size);
+    return (PyObject*) result;
 }
 
 /**
@@ -273,9 +391,64 @@ MemView_concat(MemView* self, PyObject* other_obj)
  * @return A new MemView object containing the sliced data, or NULL on failure.
  */
 static PyObject*
-MemView_slicing(MemView* self, PyObject* args)
+MemView_slicing(MemView *self, PyObject* args, PyObject* kwargs)
 {
-    Py_RETURN_NONE;
+    if (self->type != STR_MEM_TYPE)
+    {
+        PyErr_SetString(PyExc_TypeError, "Only string type available");
+        return NULL;
+    }
+
+    int origin = 0, offset = 0;
+    static char *kwlist[] = {"origin", "offset", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ii", kwlist, &origin, &offset))
+    {
+        PyErr_SetString(PyExc_TypeError, "origin, offset are required.");
+        return NULL;
+    }
+    if (origin < 0 || offset <= 0)
+    {
+        PyErr_SetString(PyExc_ValueError, "origin and offset must be positive.");
+        return NULL;
+    }
+    size_t total_bits = self->size * 8;
+    if ((size_t)origin + (size_t)offset > total_bits)
+    {
+        PyErr_SetString(PyExc_ValueError, "Slicing size is out of range");
+        return NULL;
+    }
+
+    // Create New MemView
+    size_t out_bits = (size_t) offset;
+    size_t out_bytes = (size_t) (out_bits + 7) / 8;
+    MemView* result = PyObject_New(MemView, &MemViewType);
+    if (result == NULL)
+    {
+        Py_DECREF(result);
+        PyErr_NoMemory();
+        return NULL;
+    }
+    result->size = out_bytes;
+    result->type = STR_MEM_TYPE;
+
+    // Copy bit
+    const unsigned char *src = (const unsigned char*) self->data + origin;;
+    unsigned char *dst = (unsigned char*) result->data;
+    for (size_t i = 0; i < out_bytes; i++)
+    {
+        size_t src_idx_bit  = (size_t)origin + i;
+        size_t src_byte_idx = src_idx_bit >> 3;
+        size_t src_bit_off  = 7 - (src_idx_bit & 7);
+        int bit_val = (src[src_byte_idx] >> src_bit_off) & 0x01;
+        size_t dst_idx_bit  = i;
+        size_t dst_byte_idx = dst_idx_bit >> 3;
+        size_t dst_bit_off  = 7 - (dst_idx_bit & 7);
+
+        if (bit_val)
+            dst[dst_byte_idx] |= (1u << dst_bit_off);
+    }
+
+    return (PyObject*) result;
 }
 
 /**
@@ -288,5 +461,11 @@ MemView_slicing(MemView* self, PyObject* args)
 static PyObject*
 MemView_bsize(MemView* self, PyObject* Py_UNUSED(ignored))
 {
-    Py_RETURN_NONE;
+    if (self->type != STR_MEM_TYPE)
+    {
+        PyErr_SetString(PyExc_TypeError, "Only string type available");
+        return NULL;
+    }
+    size_t byte_size = self->size * sizeof(unsigned char);
+    return (PyObject*) Py_BuildValue("i", byte_size);
 }
