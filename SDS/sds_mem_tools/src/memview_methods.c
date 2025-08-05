@@ -1,7 +1,7 @@
-/*
- * memview_methods.c
+/**
+ * @file memview_methods.c
+ * @brief This file implements the methods for the MemView Python type.
  *
- * This file implements the methods for the MemView Python type.
  * It includes functions for creating, initializing, deallocating,
  * and manipulating memory views. The methods defined here are
  * designed to safely handle sensitive data within Python applications.
@@ -20,6 +20,7 @@ static PyObject* MemView_lshift(MemView *self, PyObject* args, PyObject* kwargs)
 static PyObject* MemView_concat(MemView* self, PyObject* other_obj);
 static PyObject* MemView_slicing(MemView *self, PyObject* args, PyObject* kwargs);
 static PyObject* MemView_bsize(MemView* self, PyObject* Py_UNUSED(ignored));
+static PyObject* MemView_badd(MemView* self, PyObject* other_obj);
 
 static PyMemberDef MemView_members[] = {
     {NULL}
@@ -34,6 +35,7 @@ static PyMethodDef MemView_methods[] = {
     {"concat", (PyCFunction)MemView_concat, METH_O, "Concatenate with another MemView object."},
     {"slicing", (PyCFunction)MemView_slicing, METH_VARARGS | METH_KEYWORDS, "Slice bits from the origin."},
     {"bsize", (PyCFunction)MemView_bsize, METH_NOARGS, "Return the byte size of the memory."},
+    {"badd", (PyCFunction)MemView_badd, METH_O, "Perform byte-wise addition with another MemView object"},
     {NULL} 
 };
 
@@ -41,15 +43,15 @@ static PyMethodDef MemView_methods[] = {
     (Py_TYPE(object) == (&MemViewType))
 
 /**
- * @brief Creates a new MemView object.
- *
- * This function is the constructor for the MemView type. It allocates memory for a new
- * MemView object and initializes its data and size to NULL and 0, respectively.
- *
+ * @brief Creates a new, uninitialized MemView object.
+ * @details This function serves as the constructor for the MemView type. It allocates
+ * memory for a new MemView object and initializes its internal data pointer to NULL
+ * and size to 0. It is called by the Python interpreter when a new instance of
+ * MemView is created.
  * @param type The Python type object for MemView.
- * @param args Unused.
- * @param kwds Unused.
- * @return A new MemView object, or NULL on failure.
+ * @param args Unused positional arguments.
+ * @param kwds Unused keyword arguments.
+ * @return A new, empty MemView object, or NULL if memory allocation fails.
  */
 static PyObject*
 MemView_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
@@ -64,15 +66,14 @@ MemView_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 /**
- * @brief Initializes a MemView object.
- *
- * This function initializes a MemView object with a value provided as a Python object.
- * It parses the input arguments and calls MemView_assign to set the initial value.
- *
- * @param self A pointer to the MemView object.
- * @param args The positional arguments.
- * @param kwargs The keyword arguments.
- * @return 0 on success, -1 on failure.
+ * @brief Initializes a MemView object with a given value.
+ * @details This function sets the initial value of a MemView object. It expects a
+ * Python unicode string as input. If the object is already initialized, its
+ * previous content is deallocated before assignment.
+ * @param self A pointer to the MemView object to initialize.
+ * @param args Positional arguments passed during object creation (expects one unicode object).
+ * @param kwargs Keyword arguments passed during object creation (expects 'value' keyword).
+ * @return 0 on successful initialization, -1 on failure (e.g., type mismatch).
  */
 static int
 MemView_init(MemView* self, PyObject* args, PyObject* kwargs)
@@ -93,11 +94,9 @@ MemView_init(MemView* self, PyObject* args, PyObject* kwargs)
 
 /**
  * @brief Deallocates a MemView object.
- *
- * This function is the destructor for the MemView type. It frees the memory
- * allocated for the data and sets the data pointer to NULL and size to 0.
- *
- * @param self A pointer to the MemView object.
+ * @details This function is the destructor for the MemView type. It frees the memory
+ * allocated for the data and resets the size to 0.
+ * @param self A pointer to the MemView object to be deallocated.
  */
 static void
 MemView_dealloc(MemView* self)
@@ -111,14 +110,14 @@ MemView_dealloc(MemView* self)
 }
 
 /**
- * @brief Assigns a new value to a MemView object.
- *
- * This function assigns a new value to the MemView object from a Python unicode string.
- * It handles memory allocation and reallocation as needed.
- *
+ * @brief Assigns a new value to a MemView object from a Python unicode string.
+ * @details This function sets or updates the value of the MemView object. It takes a
+ * Python unicode string, converts it to UTF-8, and copies it into the
+ * object's internal buffer. It handles memory allocation and reallocation
+ * automatically.
  * @param self A pointer to the MemView object.
- * @param other The Python object to assign from (must be a unicode string).
- * @return Py_None on success, NULL on failure.
+ * @param other The Python unicode object to assign from.
+ * @return Py_None on success, or NULL on failure (e.g., type error, memory allocation error).
  */
 static PyObject*
 MemView_assign(MemView* self, PyObject* other)
@@ -155,12 +154,11 @@ MemView_assign(MemView* self, PyObject* other)
 }
 
 /**
- * @brief Clears the memory content of a MemView object.
- *
- * This function securely clears the memory held by the MemView object by setting it to zero.
- *
+ * @brief Securely clears the memory content of a MemView object.
+ * @details This function overwrites the memory buffer of the MemView object with zeros
+ * to securely erase its content.
  * @param self A pointer to the MemView object.
- * @param ignored Unused.
+ * @param ignored Unused argument.
  * @return Py_None on success.
  */
 static PyObject*
@@ -172,13 +170,12 @@ MemView_clear(MemView* self, PyObject* Py_UNUSED(ignored))
 }
 
 /**
- * @brief Returns the value of a MemView object as a Python string.
- *
- * This function returns the content of the MemView object as a new Python unicode string.
- *
+ * @brief Retrieves the value of a MemView object as a Python string.
+ * @details This function returns the content of the MemView object as a new Python
+ * unicode string. It fails if the internal data type is not string-based.
  * @param self A pointer to the MemView object.
- * @param ignored Unused.
- * @return A new Python unicode string object on success, NULL on failure.
+ * @param ignored Unused argument.
+ * @return A new Python unicode string object on success, or NULL on failure.
  */
 static PyObject*
 MemView_value(MemView* self, PyObject* Py_UNUSED(ignored))
@@ -192,6 +189,7 @@ MemView_value(MemView* self, PyObject* Py_UNUSED(ignored))
     if (self->size > (size_t) PY_SSIZE_T_MAX)
     {
         PyErr_SetString(PyExc_ValueError, "Memory size is too large");
+        return NULL;
     }
 
     PyObject* str = PyUnicode_FromStringAndSize(self->data, (Py_ssize_t) self->size);
@@ -208,13 +206,12 @@ MemView_value(MemView* self, PyObject* Py_UNUSED(ignored))
 /******************************************************************************/
 
 /**
- * @brief Performs a bitwise XOR operation.
- *
- * This function performs a bitwise XOR operation between two MemView objects.
- *
- * @param self A pointer to the first MemView object.
- * @param other_obj A pointer to the second MemView object.
- * @return A new MemView object containing the result of the XOR operation, or NULL on failure.
+ * @brief Performs a byte-wise XOR operation between two MemView objects.
+ * @details This function computes the XOR of two MemView objects of the same size.
+ * It returns a new MemView object containing the result.
+ * @param self The first MemView object.
+ * @param other_obj The second MemView object.
+ * @return A new MemView object with the result of the XOR operation, or NULL on failure.
  */
 static PyObject *
 MemView_xor(MemView *self, PyObject *other_obj)
@@ -256,12 +253,13 @@ MemView_xor(MemView *self, PyObject *other_obj)
 }
 
 /**
- * @brief Performs a bitwise left shift.
- *
- * This function performs a bitwise left shift on the MemView object's data.
- *
+ * @brief Performs a bitwise left circular shift (rotation).
+ * @details This function performs a bitwise left circular shift on the MemView
+ * object's data. The bits shifted out from the left end are wrapped around
+ * to the right end.
  * @param self A pointer to the MemView object.
- * @param args The number of bits to shift by.
+ * @param args Positional arguments, expecting an integer for the number of bits to shift.
+ * @param kwargs Keyword arguments, expecting 'shift' keyword.
  * @return A new MemView object with the shifted data, or NULL on failure.
  */
 static PyObject *
@@ -286,58 +284,52 @@ MemView_lshift(MemView *self, PyObject* args, PyObject* kwargs)
         return NULL;
     }
 
-    // if Total bits are larger than total size, fill all zero
-    size_t total_bits = self->size * 8;
-    if ((size_t)shift >= total_bits)
+    const int total_bits = (int)self->size * 8;
+    shift = shift % total_bits;
+
+    if (shift == 0)
     {
         MemView* result = PyObject_New(MemView, &MemViewType);
-        if (result == NULL)
-        {
-            PyErr_NoMemory();
-            return NULL;
-        }
-        result->size = self->size;
-        result->data = PyMem_RawCalloc(self->size, 1);
-        result->type = STR_MEM_TYPE;
+        result->data = PyMem_RawMalloc(self->size);
         if (result->data == NULL)
         {
             Py_DECREF(result);
             PyErr_NoMemory();
             return NULL;
         }
-        return (PyObject*)result;
+        memcpy(result->data, self->data, self->size);
+        result->size = self->size;
+        result->type = STR_MEM_TYPE;
+        return (PyObject*) result;
     }
 
+    unsigned char* src = (unsigned char*) self->data;
     MemView* result = PyObject_New(MemView, &MemViewType);
-    if (result == NULL)
+    result->data = PyMem_RawMalloc(self->size);
+    if (result->data == NULL)
     {
-        PyErr_NoMemory();
-        return NULL;
-    }
-    result->size = self->size;
-    result->data = PyMem_RawCalloc(self->size, 1);
-    result->type = STR_MEM_TYPE;
-    if (result->data == NULL) {
         Py_DECREF(result);
         PyErr_NoMemory();
         return NULL;
     }
+    result->size = self->size;
+    result->type = STR_MEM_TYPE;
+    unsigned char* dst = (unsigned char*) result->data;
+    memset(dst, 0, self->size);
 
-    // Shift
-    const unsigned char* src = (const unsigned char*)self->data;
-    unsigned char* dst = (unsigned char*)result->data;
+    for (size_t i = 0; i < total_bits; i++)
+    {
+        size_t src_bit_pos = (i+shift) % total_bits;
+        size_t src_byte_idx = src_bit_pos / 8;
+        size_t src_bit_off = 7 - (src_bit_pos % 8);
 
-    for (size_t i = 0; i < total_bits - shift; ++i) {
-        size_t src_idx = i + shift;
-        size_t src_byte = src_idx >> 3;
-        size_t src_bit = 7 - (src_idx & 7);
-        int bit_val = (src[src_byte] >> src_bit) & 1;
+        int bit_val = (src[src_byte_idx] >> src_bit_off) & 0x01;
 
-        size_t dst_byte = i >> 3;
-        size_t dst_bit = 7 - (i & 7);
+        size_t dst_byte_idx = i / 8;
+        size_t dst_bit_off = 7 - (i % 8);
 
         if (bit_val)
-            dst[dst_byte] |= (1u << dst_bit);
+            dst[dst_byte_idx] |= (1u << dst_bit_off);
     }
 
     return (PyObject*)result;
@@ -345,11 +337,10 @@ MemView_lshift(MemView *self, PyObject* args, PyObject* kwargs)
 
 /**
  * @brief Concatenates two MemView objects.
- *
- * This function concatenates the data of two MemView objects.
- *
- * @param self A pointer to the first MemView object.
- * @param other_obj A pointer to the second MemView object.
+ * @details This function creates a new MemView object that is the result of
+ * concatenating the data of the current object with another MemView object.
+ * @param self The first MemView object (prefix).
+ * @param other_obj The second MemView object (suffix).
  * @return A new MemView object containing the concatenated data, or NULL on failure.
  */
 static PyObject*
@@ -358,6 +349,7 @@ MemView_concat(MemView* self, PyObject* other_obj)
     if (!MEMVIEWTYPE_CHECK(other_obj))
     {
         PyErr_SetString(PyExc_TypeError, "Only MemView type available");
+        return NULL;
     }
     MemView* other = (MemView*)other_obj;
     if (other->type != STR_MEM_TYPE)
@@ -376,19 +368,19 @@ MemView_concat(MemView* self, PyObject* other_obj)
         PyErr_NoMemory();
         return NULL;
     }
-    memcpy(result->data, other->data, self->size);
+    memcpy(result->data, self->data, self->size);
     memcpy(result->data+self->size, other->data, (size_t) other->size);
     return (PyObject*) result;
 }
 
 /**
- * @brief Slices the data of a MemView object.
- *
- * This function extracts a slice of the data from a MemView object.
- *
+ * @brief Extracts a slice of bits from a MemView object.
+ * @details This function extracts a specified number of bits from a given starting
+ * position (origin) in the MemView object's data.
  * @param self A pointer to the MemView object.
- * @param args The start and end positions for the slice.
- * @return A new MemView object containing the sliced data, or NULL on failure.
+ * @param args Positional arguments: 'origin' (starting bit index) and 'offset' (number of bits to slice).
+ * @param kwargs Keyword arguments: 'origin' and 'offset'.
+ * @return A new MemView object containing the sliced bits, or NULL on failure.
  */
 static PyObject*
 MemView_slicing(MemView *self, PyObject* args, PyObject* kwargs)
@@ -428,13 +420,21 @@ MemView_slicing(MemView *self, PyObject* args, PyObject* kwargs)
         PyErr_NoMemory();
         return NULL;
     }
+    result->data = PyMem_RawMalloc(out_bytes);
+    if (result->data == NULL)
+    {
+        Py_DECREF(result);
+        PyErr_NoMemory();
+        return NULL;
+    }
+    memset(result->data, 0, out_bytes);
     result->size = out_bytes;
     result->type = STR_MEM_TYPE;
 
     // Copy bit
-    const unsigned char *src = (const unsigned char*) self->data + origin;;
+    const unsigned char *src = (const unsigned char*) self->data;
     unsigned char *dst = (unsigned char*) result->data;
-    for (size_t i = 0; i < out_bytes; i++)
+    for (size_t i = 0; i < out_bits; i++)
     {
         size_t src_idx_bit  = (size_t)origin + i;
         size_t src_byte_idx = src_idx_bit >> 3;
@@ -452,10 +452,9 @@ MemView_slicing(MemView *self, PyObject* args, PyObject* kwargs)
 }
 
 /**
- * @brief Returns the byte size of the MemView object's data.
- *
+ * @brief Returns the size of the MemView object's data in bytes.
  * @param self A pointer to the MemView object.
- * @param ignored Unused.
+ * @param ignored Unused argument.
  * @return A Python integer representing the size of the data in bytes.
  */
 static PyObject*
@@ -468,4 +467,66 @@ MemView_bsize(MemView* self, PyObject* Py_UNUSED(ignored))
     }
     size_t byte_size = self->size * sizeof(unsigned char);
     return (PyObject*) Py_BuildValue("i", byte_size);
+}
+
+/**
+ * @brief Performs byte-wise addition of two MemView objects.
+ * @details This function adds the byte values of two MemView objects of the same
+ * size, handling carry-over between bytes. It simulates addition of two large
+ * unsigned integers.
+ * @param self The first MemView object.
+ * @param other_obj The second MemView object.
+ * @return A new MemView object containing the result of the addition, or NULL on failure.
+ */
+static PyObject*
+    MemView_badd(MemView* self, PyObject* other_obj)
+{
+    if (self->type != STR_MEM_TYPE)
+    {
+        PyErr_SetString(PyExc_TypeError, "Only string type available");
+        return NULL;
+    }
+    if (!MEMVIEWTYPE_CHECK(other_obj))
+    {
+        PyErr_SetString(PyExc_Exc_TypeError, "Only MemView type available");
+        return NULL;
+    }
+    MemView* other = (MemView*) other_obj;
+    if (other->type != STR_MEM_TYPE)
+    {
+        PyErr_SetString(PyExc_TypeError, "Only string type available");
+        return NULL;
+    }
+    if (self->size != other->size)
+    {
+        PyErr_SetString(PyExc_ValueError, "Size mismatch");
+        return NULL;
+    }
+
+    MemView* result = PyObject_New(MemView, &MemViewType);
+    if (result == NULL)
+    {
+        Py_DECREF(result);
+        PyErr_NoMemory();
+        return NULL;
+    }
+    result->data = PyMem_RawMalloc(other->size);
+    if (result->data == NULL)
+    {
+        Py_DECREF(result);
+        PyErr_NoMemory();
+        return NULL;
+    }
+    result->size = other->size;
+    result->type = STR_MEM_TYPE;
+
+    int carry = 0;
+    for (int i = (int)self->size-1; i >= 0; i--)
+    {
+        int sum = ((unsigned char*)self->data)[i] + ((unsigned char*)other->data)[i]+carry;
+        ((unsigned char*)result->data)[i] = (unsigned char)(sum & 0xff);
+        carry = sum > 0xff ? 1: 0;
+    }
+
+    return (PyObject*) result;
 }
