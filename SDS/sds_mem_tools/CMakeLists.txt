@@ -13,11 +13,17 @@ file(GLOB_RECURSE SOURCES
         "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
 )
 
-# Define executable target
-add_executable(sds_mem_tools ${SOURCES})
+# Define library target
+add_library(sdsmemtools SHARED ${SOURCES})
 
 # Include Python headers for target
-target_include_directories(sds_mem_tools PRIVATE ${Python3_INCLUDE_DIRS})
+target_include_directories(sdsmemtools PRIVATE ${Python3_INCLUDE_DIRS})
 
 # Link against Python library
-target_link_libraries(sds_mem_tools PRIVATE Python3::Python)
+target_link_libraries(sdsmemtools PRIVATE Python3::Python)
+
+# Rename the output file to be a python extension
+set_target_properties(sdsmemtools PROPERTIES
+        PREFIX ""
+        SUFFIX ".so"
+)
