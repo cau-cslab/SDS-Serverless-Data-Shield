@@ -8,6 +8,7 @@
  */
 
 #include "include/memview.h"
+#include "include/mpointer.h"
 
 static PyObject* MemView_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 static int MemView_init(MemView* self, PyObject* args, PyObject* kwargs);
@@ -21,6 +22,7 @@ static PyObject* MemView_concat(MemView* self, PyObject* other_obj);
 static PyObject* MemView_slicing(MemView *self, PyObject* args, PyObject* kwargs);
 static PyObject* MemView_bsize(MemView* self, PyObject* Py_UNUSED(ignored));
 static PyObject* MemView_badd(MemView* self, PyObject* other_obj);
+static PyObject* MemView_pointer(MemView* self, PyObject* Py_UNUSED(ignored));
 
 static PyMemberDef MemView_members[] = {
     {NULL}
@@ -36,6 +38,7 @@ static PyMethodDef MemView_methods[] = {
     {"slicing", (PyCFunction)MemView_slicing, METH_VARARGS | METH_KEYWORDS, "Slice bits from the origin."},
     {"bsize", (PyCFunction)MemView_bsize, METH_NOARGS, "Return the byte size of the memory."},
     {"badd", (PyCFunction)MemView_badd, METH_O, "Perform byte-wise addition with another MemView object"},
+    {"pointer", (PyCFunction)MemView_pointer, METH_NOARGS, "Get pointer"},
     {NULL} 
 };
 
@@ -61,6 +64,7 @@ MemView_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     {
         self->data = NULL;
         self->size = 0;
+        self->_retain_memory = false;
     }
     return (PyObject *)self;
 }
@@ -78,16 +82,22 @@ MemView_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static int
 MemView_init(MemView* self, PyObject* args, PyObject* kwargs)
 {
-    PyObject* input = NULL;
-    static char *kwlist[] = {"value", NULL};
+    PyObject* value = NULL;
+    PyObject* retain_mem = NULL;
+    static char *kwlist[] = {"value", "retain_mem", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", kwlist, &input))
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O", kwlist, &value, &retain_mem))
         return -1;
 
     if (self->data != NULL)
         MemView_dealloc(self);
 
-    MemView_assign(self, input);
+    if (retain_mem != NULL)
+        self->_retain_memory = PyObject_IsTrue(retain_mem);
+    else
+        self->_retain_memory = false;
+
+    MemView_assign(self, value);
 
     return 0;
 }
@@ -101,7 +111,7 @@ MemView_init(MemView* self, PyObject* args, PyObject* kwargs)
 static void
 MemView_dealloc(MemView* self)
 {
-    if (self->data != NULL)
+    if (self->data != NULL && !self->_retain_memory)
     {
         PyMem_RawFree(self->data);
         self->data = NULL;
@@ -416,14 +426,12 @@ MemView_slicing(MemView *self, PyObject* args, PyObject* kwargs)
     MemView* result = PyObject_New(MemView, &MemViewType);
     if (result == NULL)
     {
-        Py_DECREF(result);
         PyErr_NoMemory();
         return NULL;
     }
     result->data = PyMem_RawMalloc(out_bytes);
     if (result->data == NULL)
     {
-        Py_DECREF(result);
         PyErr_NoMemory();
         return NULL;
     }
@@ -506,14 +514,12 @@ static PyObject*
     MemView* result = PyObject_New(MemView, &MemViewType);
     if (result == NULL)
     {
-        Py_DECREF(result);
         PyErr_NoMemory();
         return NULL;
     }
     result->data = PyMem_RawMalloc(other->size);
     if (result->data == NULL)
     {
-        Py_DECREF(result);
         PyErr_NoMemory();
         return NULL;
     }
@@ -527,6 +533,35 @@ static PyObject*
         ((unsigned char*)result->data)[i] = (unsigned char)(sum & 0xff);
         carry = sum > 0xff ? 1: 0;
     }
+
+    return (PyObject*) result;
+}
+
+static PyObject*
+    MemView_pointer(MemView* self, PyObject* Py_UNUSED(ignored))
+{
+    if (!self->_retain_memory)
+    {
+        PyErr_SetString(PyExc_TypeError, "pointer method only available when retain_mem flag is activated");
+        return NULL;
+    }
+
+    if (self->type != STR_MEM_TYPE)
+    {
+        PyErr_SetString(PyExc_TypeError, "Only string type available");
+        return NULL;
+    }
+
+    MPointer* result = PyObject_New(MPointer, &MPointerType);
+    if (result == NULL)
+    {
+        PyErr_NoMemory();
+        return NULL;
+    }
+    result->pointer = self->data;
+    result->size = self->size;
+    result->owner = (PyObject*) self;
+    Py_INCREF(self);
 
     return (PyObject*) result;
 }
