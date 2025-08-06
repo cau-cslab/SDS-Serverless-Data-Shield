@@ -1,7 +1,9 @@
 from cryptoHandler import CryptoHandler
 
+
 class SecureContext:
     deleteTarget = []
+
     def __enter__(self):
         CryptoHandler.changeKey()
 
