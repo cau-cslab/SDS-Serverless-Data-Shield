@@ -2,6 +2,7 @@ import os
 from functools import wraps
 from sdsmemtools import MemView
 
+
 class CryptoHandler:
     ephemeralKey = None
 
@@ -14,6 +15,7 @@ class CryptoHandler:
         @wraps(func)
         def wrapper(*args, **kwargs):
             return func(CryptoHandler.ephemeralKey, *args, **kwargs)
+
         return wrapper
 
     @staticmethod
