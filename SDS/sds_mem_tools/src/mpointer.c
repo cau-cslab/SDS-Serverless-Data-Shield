@@ -1,3 +1,10 @@
+/**
+ * mpointer.c
+ * This file defines the MPointer Python type, which is used to point to the memory of a MemView object.
+ * @warning This module is intended for debugging purposes only, to verify that memory is cleared properly.
+ * Using this in production may lead to security vulnerabilities.
+*/
+
 #include "include/mpointer.h"
 #include "mpointer_methods.c"
 

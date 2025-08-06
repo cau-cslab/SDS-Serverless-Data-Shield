@@ -125,9 +125,9 @@ MemView_dealloc(MemView* self)
  * Python unicode string, converts it to UTF-8, and copies it into the
  * object's internal buffer. It handles memory allocation and reallocation
  * automatically.
- * @param self A pointer to the MemView object.
- * @param other The Python unicode object to assign from.
- * @return Py_None on success, or NULL on failure (e.g., type error, memory allocation error).
+ * 
+ * @usage
+ * mv.assign("new_value")
  */
 static PyObject*
 MemView_assign(MemView* self, PyObject* other)
@@ -167,9 +167,9 @@ MemView_assign(MemView* self, PyObject* other)
  * @brief Securely clears the memory content of a MemView object.
  * @details This function overwrites the memory buffer of the MemView object with zeros
  * to securely erase its content.
- * @param self A pointer to the MemView object.
- * @param ignored Unused argument.
- * @return Py_None on success.
+ *
+ * @usage
+ * mv.clear()
  */
 static PyObject*
 MemView_clear(MemView* self, PyObject* Py_UNUSED(ignored))
@@ -183,9 +183,9 @@ MemView_clear(MemView* self, PyObject* Py_UNUSED(ignored))
  * @brief Retrieves the value of a MemView object as a Python string.
  * @details This function returns the content of the MemView object as a new Python
  * unicode string. It fails if the internal data type is not string-based.
- * @param self A pointer to the MemView object.
- * @param ignored Unused argument.
- * @return A new Python unicode string object on success, or NULL on failure.
+ *
+ * @usage
+ * val = mv.value()
  */
 static PyObject*
 MemView_value(MemView* self, PyObject* Py_UNUSED(ignored))
@@ -219,9 +219,9 @@ MemView_value(MemView* self, PyObject* Py_UNUSED(ignored))
  * @brief Performs a byte-wise XOR operation between two MemView objects.
  * @details This function computes the XOR of two MemView objects of the same size.
  * It returns a new MemView object containing the result.
- * @param self The first MemView object.
- * @param other_obj The second MemView object.
- * @return A new MemView object with the result of the XOR operation, or NULL on failure.
+ *
+ * @usage
+ * result = mv1.xor(mv2)
  */
 static PyObject *
 MemView_xor(MemView *self, PyObject *other_obj)
@@ -267,10 +267,9 @@ MemView_xor(MemView *self, PyObject *other_obj)
  * @details This function performs a bitwise left circular shift on the MemView
  * object's data. The bits shifted out from the left end are wrapped around
  * to the right end.
- * @param self A pointer to the MemView object.
- * @param args Positional arguments, expecting an integer for the number of bits to shift.
- * @param kwargs Keyword arguments, expecting 'shift' keyword.
- * @return A new MemView object with the shifted data, or NULL on failure.
+ *
+ * @usage
+ * result = mv.lshift(5)
  */
 static PyObject *
 MemView_lshift(MemView *self, PyObject* args, PyObject* kwargs)
@@ -349,9 +348,9 @@ MemView_lshift(MemView *self, PyObject* args, PyObject* kwargs)
  * @brief Concatenates two MemView objects.
  * @details This function creates a new MemView object that is the result of
  * concatenating the data of the current object with another MemView object.
- * @param self The first MemView object (prefix).
- * @param other_obj The second MemView object (suffix).
- * @return A new MemView object containing the concatenated data, or NULL on failure.
+ *
+ * @usage
+ * result = mv1.concat(mv2)
  */
 static PyObject*
 MemView_concat(MemView* self, PyObject* other_obj)
@@ -387,10 +386,9 @@ MemView_concat(MemView* self, PyObject* other_obj)
  * @brief Extracts a slice of bits from a MemView object.
  * @details This function extracts a specified number of bits from a given starting
  * position (origin) in the MemView object's data.
- * @param self A pointer to the MemView object.
- * @param args Positional arguments: 'origin' (starting bit index) and 'offset' (number of bits to slice).
- * @param kwargs Keyword arguments: 'origin' and 'offset'.
- * @return A new MemView object containing the sliced bits, or NULL on failure.
+ *
+ * @usage
+ * slice = mv.slicing(8, 16)
  */
 static PyObject*
 MemView_slicing(MemView *self, PyObject* args, PyObject* kwargs)
@@ -461,9 +459,9 @@ MemView_slicing(MemView *self, PyObject* args, PyObject* kwargs)
 
 /**
  * @brief Returns the size of the MemView object's data in bytes.
- * @param self A pointer to the MemView object.
- * @param ignored Unused argument.
- * @return A Python integer representing the size of the data in bytes.
+ *
+ * @usage
+ * size = mv.bsize()
  */
 static PyObject*
 MemView_bsize(MemView* self, PyObject* Py_UNUSED(ignored))
@@ -482,9 +480,9 @@ MemView_bsize(MemView* self, PyObject* Py_UNUSED(ignored))
  * @details This function adds the byte values of two MemView objects of the same
  * size, handling carry-over between bytes. It simulates addition of two large
  * unsigned integers.
- * @param self The first MemView object.
- * @param other_obj The second MemView object.
- * @return A new MemView object containing the result of the addition, or NULL on failure.
+ *
+ * @usage
+ * result = mv1.badd(mv2)
  */
 static PyObject*
     MemView_badd(MemView* self, PyObject* other_obj)
@@ -537,6 +535,13 @@ static PyObject*
     return (PyObject*) result;
 }
 
+/**
+ * @brief Returns a pointer to the MemView object's data.
+ * @details This function is only available when the retain_mem flag is set to True.
+ *
+ * @usage
+ * ptr = mv.pointer()
+ */
 static PyObject*
     MemView_pointer(MemView* self, PyObject* Py_UNUSED(ignored))
 {
