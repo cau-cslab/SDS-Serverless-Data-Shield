@@ -60,7 +60,7 @@ def makeKeyStream(key, Nonce):
     return const1.concat(const2).concat(const3).concat(const4).concat(key1).concat(key2).concat(key3).concat(key4).concat(key5).concat(key6).concat(key7).concat(key8).concat(counter).concat(nonce1).concat(nonce2).concat(nonce3)
 
 class SecureVar:
-    counter = "cntr"
+    counter = "1000"
     @staticmethod
     @CryptoHandler.useKey
     def encrypt(key, plainText):
@@ -68,8 +68,8 @@ class SecureVar:
         Nonce = MemView(os.urandom(48).hex())
         cipherText = MemView("")
         while target.bsize() > 64:
-            realTarget = target.slicing(0, 64)
-            target = target.slicing(64, target.bsize()*8-64)
+            realTarget = target.slicing(0, 64*8)
+            target = target.slicing(64*8, (target.bsize()-64)*8)
             keyStream = makeKeyStream(key, Nonce)
             cipherText = cipherText.concat(keyStream.xor(realTarget))
             SecureVar.counter = str(int(SecureVar.counter) + 1)
@@ -78,7 +78,7 @@ class SecureVar:
 
         target.clear()
         keyStream.clear()
-        SecureVar.counter = "cntr"
+        SecureVar.counter = "1000"
         SecureContext.deleteTarget.append(Nonce.slicing(0, 96).concat(cipherText))
         return SecureContext.deleteTarget[-1]
 
@@ -89,8 +89,8 @@ class SecureVar:
         target = cipherText.slicing(96, cipherText.bsize()*8-96)
         plainText = MemView("")
         while target.bsize() > 64:
-            realTarget = target.slicing(0, 64)
-            target = target.slicing(64, target.bsize()*8-64)
+            realTarget = target.slicing(0, 64*8)
+            target = target.slicing(64*8, (target.bsize()-64)*8)
             keyStream = makeKeyStream(key, Nonce)
             plainText = plainText.concat(keyStream.xor(realTarget))
             SecureVar.counter = str(int(SecureVar.counter) + 1)
@@ -98,5 +98,5 @@ class SecureVar:
         plainText = plainText.concat(keyStream.slicing(0, target.bsize()*8).xor(target))
 
         keyStream.clear()
-        SecureVar.counter = "cntr"
+        SecureVar.counter = "1000"
         return plainText.value()
