@@ -7,7 +7,7 @@
  * designed to safely handle sensitive data within Python applications.
  */
 
-#include "include/mem_tools.h"
+#include "include/memview.h"
 
 static PyObject* MemView_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 static int MemView_init(MemView* self, PyObject* args, PyObject* kwargs);

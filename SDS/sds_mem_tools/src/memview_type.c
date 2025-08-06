@@ -7,7 +7,7 @@
  * implement its behavior, including creation, initialization, and deallocation.
  */
 
-#include "include/mem_tools.h"
+#include "include/memview.h"
 #include "memview_methods.c"
 
 PyTypeObject MemViewType = {

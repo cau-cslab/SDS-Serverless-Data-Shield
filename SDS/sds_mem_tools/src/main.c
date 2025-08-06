@@ -7,7 +7,7 @@
  */
 
 #include "Python.h"
-#include "include/mem_tools.h"
+#include "include/memview.h"
 
 static PyModuleDef sdsmemtools_module = {
     PyModuleDef_HEAD_INIT,
