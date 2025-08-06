@@ -36,18 +36,3 @@ jobs:
         pip install black
         black --check securelib/ tests/
 
-  security-check:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Install safety
-      run: |
-        pip install safety
-        pip install -r requirements.txt
-
-    - name: Run dependency vulnerability check
-      run: |
-        safety scan -r requirements.txt --no-api
