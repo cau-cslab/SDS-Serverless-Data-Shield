@@ -8,6 +8,7 @@
 
 #include "Python.h"
 #include "include/memview.h"
+#include "include/mpointer.h"
 
 static PyModuleDef sdsmemtools_module = {
     PyModuleDef_HEAD_INIT,
@@ -32,6 +33,14 @@ PyInit_sdsmemtools(void)
     Py_INCREF(&MemViewType);
     if (PyModule_AddObject(module, "MemView", (PyObject *)&MemViewType) < 0) {
         Py_DECREF(&MemViewType);
+        Py_DECREF(module);
+        return NULL;
+    }
+
+    Py_INCREF(&MPointerType);
+    if (PyModule_AddObject(module, "MPointer", (PyObject *)&MPointerType) < 0)
+    {
+        Py_DECREF(&MPointerType);
         Py_DECREF(module);
         return NULL;
     }

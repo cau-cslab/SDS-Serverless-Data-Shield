@@ -8,6 +8,8 @@
 
 #ifndef MEM_TOOLS_H
 #define MEM_TOOLS_H
+#include <stdbool.h>
+
 #include "Python.h"
 
 typedef enum _memtype
@@ -21,6 +23,7 @@ typedef struct
     memview_type type;
     void* data;
     size_t size;
+    bool _retain_memory;
 } MemView;
 
 extern PyTypeObject MemViewType;
