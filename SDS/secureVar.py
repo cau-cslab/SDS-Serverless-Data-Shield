@@ -1,7 +1,10 @@
+import time
+
 from secureContext import SecureContext
 from cryptoHandler import CryptoHandler
 from sdsmemtools import MemView
 import os
+from time import perf_counter
 
 def quarterRound(a, b, c, d):
     a = a.badd(b)
@@ -63,8 +66,10 @@ class SecureVar:
     counter = "1000"
     @staticmethod
     @CryptoHandler.useKey
-    def encrypt(key, plainText):
+    def encrypt(key, plainText, timeCheck = False):
         target = MemView(plainText)
+        if timeCheck:
+            print(time.perf_counter())
         Nonce = MemView(os.urandom(48).hex())
         cipherText = MemView("")
         while target.bsize() > 64:
