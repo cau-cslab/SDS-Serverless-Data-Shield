@@ -6,6 +6,7 @@ from sdsmemtools import MemView
 import os
 from time import perf_counter
 
+
 def quarterRound(a, b, c, d):
     a = a.badd(b)
     d = d.xor(a)
@@ -24,6 +25,7 @@ def quarterRound(a, b, c, d):
     b = b.lshift(7)
 
     return a, b, c, d
+
 
 def makeKeyStream(key, Nonce):
     # 'expand 32-byte k' to ASCII
@@ -60,26 +62,46 @@ def makeKeyStream(key, Nonce):
         key5, key2, const3, nonce3 = quarterRound(key5, key2, const3, nonce3)
         counter, key6, key3, const4 = quarterRound(counter, key6, key3, const4)
 
-    return const1.concat(const2).concat(const3).concat(const4).concat(key1).concat(key2).concat(key3).concat(key4).concat(key5).concat(key6).concat(key7).concat(key8).concat(counter).concat(nonce1).concat(nonce2).concat(nonce3)
+    return (
+        const1.concat(const2)
+        .concat(const3)
+        .concat(const4)
+        .concat(key1)
+        .concat(key2)
+        .concat(key3)
+        .concat(key4)
+        .concat(key5)
+        .concat(key6)
+        .concat(key7)
+        .concat(key8)
+        .concat(counter)
+        .concat(nonce1)
+        .concat(nonce2)
+        .concat(nonce3)
+    )
+
 
 class SecureVar:
     counter = "1000"
+
     @staticmethod
     @CryptoHandler.useKey
-    def encrypt(key, plainText, timeCheck = False):
+    def encrypt(key, plainText, timeCheck=False):
         target = MemView(plainText)
         if timeCheck:
             print(time.perf_counter())
         Nonce = MemView(os.urandom(48).hex())
         cipherText = MemView("")
         while target.bsize() > 64:
-            realTarget = target.slicing(0, 64*8)
-            target = target.slicing(64*8, (target.bsize()-64)*8)
+            realTarget = target.slicing(0, 64 * 8)
+            target = target.slicing(64 * 8, (target.bsize() - 64) * 8)
             keyStream = makeKeyStream(key, Nonce)
             cipherText = cipherText.concat(keyStream.xor(realTarget))
             SecureVar.counter = str(int(SecureVar.counter) + 1)
         keyStream = makeKeyStream(key, Nonce)
-        cipherText = cipherText.concat(keyStream.slicing(0, target.bsize()*8).xor(target))
+        cipherText = cipherText.concat(
+            keyStream.slicing(0, target.bsize() * 8).xor(target)
+        )
 
         target.clear()
         keyStream.clear()
@@ -91,16 +113,18 @@ class SecureVar:
     @CryptoHandler.useKey
     def decrypt(key, cipherText):
         Nonce = cipherText.slicing(0, 96)
-        target = cipherText.slicing(96, cipherText.bsize()*8-96)
+        target = cipherText.slicing(96, cipherText.bsize() * 8 - 96)
         plainText = MemView("")
         while target.bsize() > 64:
-            realTarget = target.slicing(0, 64*8)
-            target = target.slicing(64*8, (target.bsize()-64)*8)
+            realTarget = target.slicing(0, 64 * 8)
+            target = target.slicing(64 * 8, (target.bsize() - 64) * 8)
             keyStream = makeKeyStream(key, Nonce)
             plainText = plainText.concat(keyStream.xor(realTarget))
             SecureVar.counter = str(int(SecureVar.counter) + 1)
         keyStream = makeKeyStream(key, Nonce)
-        plainText = plainText.concat(keyStream.slicing(0, target.bsize()*8).xor(target))
+        plainText = plainText.concat(
+            keyStream.slicing(0, target.bsize() * 8).xor(target)
+        )
 
         keyStream.clear()
         SecureVar.counter = "1000"
