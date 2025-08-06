@@ -50,4 +50,4 @@ jobs:
 
     - name: Run dependency vulnerability check
       run: |
-        safety scan -r requirements.txt
+        safety scan -r requirements.txt --no-api
