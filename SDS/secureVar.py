@@ -1,3 +1,4 @@
+from secureContext import SecureContext
 from cryptoHandler import CryptoHandler
 from sdsmemtools import MemView
 import os
@@ -78,7 +79,8 @@ class SecureVar:
         target.clear()
         keyStream.clear()
         SecureVar.counter = "cntr"
-        return Nonce.slicing(0, 96).concat(cipherText)
+        SecureContext.deleteTarget.append(Nonce.slicing(0, 96).concat(cipherText))
+        return SecureContext.deleteTarget[-1]
 
     @staticmethod
     @CryptoHandler.useKey
@@ -95,5 +97,6 @@ class SecureVar:
         keyStream = makeKeyStream(key, Nonce)
         plainText = plainText.concat(keyStream.slicing(0, target.bsize()*8).xor(target))
 
+        keyStream.clear()
         SecureVar.counter = "cntr"
-        return plainText
+        return plainText.value()
