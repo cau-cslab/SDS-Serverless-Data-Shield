@@ -90,7 +90,11 @@ MemView_init(MemView* self, PyObject* args, PyObject* kwargs)
         return -1;
 
     if (self->data != NULL)
-        MemView_dealloc(self);
+    {
+        PyMem_RawFree(self->data);
+        self->data = NULL;
+        self->size = 0;
+    }
 
     if (retain_mem != NULL)
         self->_retain_memory = PyObject_IsTrue(retain_mem);
@@ -117,6 +121,8 @@ MemView_dealloc(MemView* self)
         self->data = NULL;
         self->size = 0;
     }
+
+    Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 /**
@@ -557,7 +563,7 @@ static PyObject*
         return NULL;
     }
 
-    MPointer* result = PyObject_New(MPointer, &MPointerType);
+    MPointer* result = PyObject_GC_New(MPointer, &MPointerType);
     if (result == NULL)
     {
         PyErr_NoMemory();
@@ -567,6 +573,7 @@ static PyObject*
     result->size = self->size;
     result->owner = (PyObject*) self;
     Py_INCREF(self);
+    PyObject_GC_Track(result);
 
     return (PyObject*) result;
 }
