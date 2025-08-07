@@ -88,6 +88,7 @@ class SecureVar:
     @CryptoHandler.useKey
     def encrypt(key, plainText, timeCheck=False):
         target = MemView(plainText)
+        del plainText
         if timeCheck:
             print(time.perf_counter())
         Nonce = MemView(os.urandom(48).hex())
