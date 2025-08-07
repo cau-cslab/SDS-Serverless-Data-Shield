@@ -26,6 +26,9 @@ PyInit_sdsmemtools(void)
     if (PyType_Ready(&MemViewType) < 0)
         return NULL;
 
+    if (PyType_Ready(&MPointerType) < 0)
+        return NULL;
+
     module = PyModule_Create(&sdsmemtools_module);
     if (module == NULL)
         return NULL;

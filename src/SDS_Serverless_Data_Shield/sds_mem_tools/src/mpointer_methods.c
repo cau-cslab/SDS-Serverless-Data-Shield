@@ -3,6 +3,8 @@
 static PyObject* MPointer_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 static int MPointer_init(MPointer *self, PyObject *args, PyObject *kwds);
 static void MPointer_dealloc(MPointer *self);
+static int MPointer_traverse(MPointer *self, visitproc visit, void *arg);
+static int MPointer_clear(MPointer *self);
 static PyObject* MPointer_value(MPointer *self, PyObject* Py_UNUSED(ignored));
 
 static PyMemberDef MPointer_members[] = {
@@ -24,12 +26,13 @@ static PyMethodDef MPointer_methods[] = {
  */
 static PyObject* MPointer_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-    MPointer *self = (MPointer *)type->tp_alloc(type, 0);
+    MPointer *self = (MPointer *)PyObject_GC_New(MPointer, type);
     if (self != NULL)
     {
         self->pointer = NULL;
         self->size = 0;
         self->owner = NULL;
+        PyObject_GC_Track(self);
     }
     return (PyObject *)self;
 }
@@ -58,6 +61,8 @@ static int MPointer_init(MPointer *self, PyObject *args, PyObject *kwds)
  */
 static void MPointer_dealloc(MPointer *self)
 {
+    PyObject_GC_UnTrack(self);
+
     if (self->pointer != NULL)
     {
         self->pointer = NULL;
@@ -65,7 +70,25 @@ static void MPointer_dealloc(MPointer *self)
     }
 
     if (self->owner != NULL)
-        Py_XDECREF(self->owner);
+    {
+        Py_CLEAR(self->owner);
+    }
+
+    Py_TYPE(self)->tp_free((PyObject *)self);
+}
+
+static int
+MPointer_traverse(MPointer *self, visitproc visit, void *arg)
+{
+    Py_VISIT(self->owner);
+    return 0;
+}
+
+static int
+MPointer_clear(MPointer *self)
+{
+    Py_CLEAR(self->owner);
+    return 0;
 }
 
 /**
