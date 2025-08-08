@@ -1,4 +1,4 @@
-from cryptoHandler import CryptoHandler
+from SDS_Serverless_Data_Shield.cryptoHandler import CryptoHandler
 
 
 class SecureContext:

@@ -1,22 +1,21 @@
+
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=74.1", "cmake-build-extension"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "SDS_Serverless_Data_Shield"
-version = "0.1.0"
+version = "0.1.13"
 description = "Ephemeral key-based encryption for secure serverless function execution"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 authors = [
     {name = "Scott Choo"},
-  {name = "Sukyum Ahn"},
-  {name = "Gyupil Ko"},
-  {name = "Jaeho Lee"},
-
+    {name = "Sukyum Ahn"},
+    {name = "Gyupil Ko"},
+    {name = "Jaeho Lee"},
 ]
-
 keywords = ["serverless", "ephemeral encryption", "memory security", "secure lambda", "data sanitization"]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -29,25 +28,23 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
 ]
-
 dependencies = [
   "cryptography>=41.0.0",
 ]
 
-
-
 [project.urls]
-
 Repository = "https://github.com/cau-cslab/SDS-Serverless-Data-Shield"
 
+[tool.setuptools.packages.find]
+where = ["src"]
 
-[tool.hatch.build.targets.sdist]
-include = [
-  "src/SDS_Serverless_Data_Shield",
-  "/README.md",
-  "/LICENSE",
-  "/pyproject.toml"
+[tool.setuptools.package-data]
+# Include header files if needed
+"SDS_Serverless_Data_Shield.sds_mem_tools" = ["*.h"]
+
+[tool.setuptools]
+# Build sdsmemtools.c as a C extension (producing SDS_Serverless_Data_Shield.sds_mem_tools.sdsmemtools.so)
+# Adjust source list as needed if there are multiple .c files
+ext-modules = [
+  { name = "SDS_Serverless_Data_Shield.sds_mem_tools.sdsmemtools", sources = ["src/SDS_Serverless_Data_Shield/sds_mem_tools/src/main.c", "src/SDS_Serverless_Data_Shield/sds_mem_tools/src/memview_methods.c","src/SDS_Serverless_Data_Shield/sds_mem_tools/src/mpointer.c",      "src/SDS_Serverless_Data_Shield/sds_mem_tools/src/memview_type.c",      "src/SDS_Serverless_Data_Shield/sds_mem_tools/src/memview_methods.c"    ],  include-dirs =  ["src/SDS_Serverless_Data_Shield/sds_mem_tools/src/inclue/memview.h", "src/SDS_Serverless_Data_Shield/sds_mem_tools/src/inclue/mpointer.h"],extra-compile-args = ["-O2"] }
 ]
-
-[tool.hatch.version]
-path = "src/SDS_Serverless_Data_Shield/__init__.py"

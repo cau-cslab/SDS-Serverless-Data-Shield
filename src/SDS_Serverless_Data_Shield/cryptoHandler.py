@@ -1,6 +1,6 @@
 import os
 from functools import wraps
-from sdsmemtools import MemView
+from SDS_Serverless_Data_Shield.sds_mem_tools.sdsmemtools import MemView
 
 
 class CryptoHandler:

@@ -1,8 +1,8 @@
 import time
 
-from secureContext import SecureContext
-from cryptoHandler import CryptoHandler
-from sdsmemtools import MemView
+from SDS_Serverless_Data_Shield.secureContext import SecureContext
+from SDS_Serverless_Data_Shield.cryptoHandler import CryptoHandler
+from SDS_Serverless_Data_Shield.sds_mem_tools.sdsmemtools import MemView
 import os
 from time import perf_counter
 
