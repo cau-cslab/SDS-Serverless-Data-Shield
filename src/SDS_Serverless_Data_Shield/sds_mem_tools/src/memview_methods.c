@@ -165,6 +165,7 @@ MemView_assign(MemView* self, PyObject* other)
         }
     }
     self->type = STR_MEM_TYPE;
+    self->_retain_memory = false;
     memcpy(self->data, str, self->size);
     Py_RETURN_NONE;
 }
@@ -254,6 +255,7 @@ MemView_xor(MemView *self, PyObject *other_obj)
     result->data = PyMem_RawMalloc(self->size);
     result->size = self->size;
     result->type = STR_MEM_TYPE;
+    result->_retain_memory = self->_retain_memory && other->_retain_memory;
     if (result->data == NULL)
     {
         Py_DECREF(result);
@@ -329,6 +331,7 @@ MemView_lshift(MemView *self, PyObject* args, PyObject* kwargs)
     }
     result->size = self->size;
     result->type = STR_MEM_TYPE;
+    result->_retain_memory = self->_retain_memory;
     unsigned char* dst = (unsigned char*) result->data;
     memset(dst, 0, self->size);
 
@@ -377,6 +380,7 @@ MemView_concat(MemView* self, PyObject* other_obj)
     result->data = PyMem_RawMalloc(self->size+other->size);
     result->size = self->size+other->size;
     result->type = STR_MEM_TYPE;
+    result->_retain_memory = self->_retain_memory && other->_retain_memory;
     if (result->data == NULL)
     {
         Py_DECREF(result);
@@ -442,6 +446,7 @@ MemView_slicing(MemView *self, PyObject* args, PyObject* kwargs)
     memset(result->data, 0, out_bytes);
     result->size = out_bytes;
     result->type = STR_MEM_TYPE;
+    result->_retain_memory = self->_retain_memory;
 
     // Copy bit
     const unsigned char *src = (const unsigned char*) self->data;
@@ -529,6 +534,7 @@ static PyObject*
     }
     result->size = other->size;
     result->type = STR_MEM_TYPE;
+    result->_retain_memory = self->_retain_memory && other->_retain_memory;
 
     int carry = 0;
     for (int i = (int)self->size-1; i >= 0; i--)
