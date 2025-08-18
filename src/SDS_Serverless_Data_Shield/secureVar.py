@@ -4,6 +4,7 @@ from SDS_Serverless_Data_Shield.cryptoHandler import CryptoHandler
 from SDS_Serverless_Data_Shield.sds_mem_tools.sdsmemtools import MemView
 import os
 
+
 def quarterRound(a, b, c, d):
     a = a.badd(b)
     d = d.xor(a)
@@ -26,10 +27,10 @@ def quarterRound(a, b, c, d):
 
 def makeKeyStream(key, Nonce, retain_mem=False):
     # 'expand 32-byte k' to ASCII
-    const1 = MemView("expa", retain_mem = retain_mem)
-    const2 = MemView("nd 3", retain_mem = retain_mem)
-    const3 = MemView("2-by", retain_mem = retain_mem)
-    const4 = MemView("te k", retain_mem = retain_mem)
+    const1 = MemView("expa", retain_mem=retain_mem)
+    const2 = MemView("nd 3", retain_mem=retain_mem)
+    const3 = MemView("2-by", retain_mem=retain_mem)
+    const4 = MemView("te k", retain_mem=retain_mem)
 
     key1 = key.slicing(0, 32)
     key2 = key.slicing(32, 32)
@@ -40,7 +41,7 @@ def makeKeyStream(key, Nonce, retain_mem=False):
     key7 = key.slicing(192, 32)
     key8 = key.slicing(224, 32)
 
-    counter = MemView(SecureVar.counter, retain_mem = retain_mem)
+    counter = MemView(SecureVar.counter, retain_mem=retain_mem)
 
     nonce1 = Nonce.slicing(0, 32)
     nonce2 = Nonce.slicing(32, 32)
