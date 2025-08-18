@@ -8,7 +8,7 @@ class CryptoHandler:
 
     @staticmethod
     def changeKey():
-        CryptoHandler.ephemeralKey = MemView(os.urandom(16).hex())
+        CryptoHandler.ephemeralKey = MemView(value=os.urandom(16).hex(), retain_mem=True)
 
     @staticmethod
     def useKey(func):
