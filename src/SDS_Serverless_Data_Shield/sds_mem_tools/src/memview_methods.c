@@ -165,7 +165,6 @@ MemView_assign(MemView* self, PyObject* other)
         }
     }
     self->type = STR_MEM_TYPE;
-    self->_retain_memory = false;
     memcpy(self->data, str, self->size);
     Py_RETURN_NONE;
 }
