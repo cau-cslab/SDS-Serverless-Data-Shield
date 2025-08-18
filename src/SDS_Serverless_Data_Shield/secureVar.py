@@ -1,11 +1,8 @@
 import time
-
 from SDS_Serverless_Data_Shield.secureContext import SecureContext
 from SDS_Serverless_Data_Shield.cryptoHandler import CryptoHandler
 from SDS_Serverless_Data_Shield.sds_mem_tools.sdsmemtools import MemView
 import os
-from time import perf_counter
-
 
 def quarterRound(a, b, c, d):
     a = a.badd(b)
@@ -27,12 +24,12 @@ def quarterRound(a, b, c, d):
     return a, b, c, d
 
 
-def makeKeyStream(key, Nonce):
+def makeKeyStream(key, Nonce, retain_mem=False):
     # 'expand 32-byte k' to ASCII
-    const1 = MemView("expa")
-    const2 = MemView("nd 3")
-    const3 = MemView("2-by")
-    const4 = MemView("te k")
+    const1 = MemView("expa", retain_mem = retain_mem)
+    const2 = MemView("nd 3", retain_mem = retain_mem)
+    const3 = MemView("2-by", retain_mem = retain_mem)
+    const4 = MemView("te k", retain_mem = retain_mem)
 
     key1 = key.slicing(0, 32)
     key2 = key.slicing(32, 32)
@@ -43,7 +40,7 @@ def makeKeyStream(key, Nonce):
     key7 = key.slicing(192, 32)
     key8 = key.slicing(224, 32)
 
-    counter = MemView(SecureVar.counter)
+    counter = MemView(SecureVar.counter, retain_mem = retain_mem)
 
     nonce1 = Nonce.slicing(0, 32)
     nonce2 = Nonce.slicing(32, 32)
@@ -86,20 +83,20 @@ class SecureVar:
 
     @staticmethod
     @CryptoHandler.useKey
-    def encrypt(key, plainText, timeCheck=False):
-        target = MemView(plainText)
+    def encrypt(key, plainText, timeCheck=False, retain_mem=False):
+        target = MemView(value=plainText, retain_mem=retain_mem)
         del plainText
         if timeCheck:
             print(time.perf_counter())
-        Nonce = MemView(os.urandom(48).hex())
-        cipherText = MemView("")
+        Nonce = MemView(value=os.urandom(48).hex(), retain_mem=retain_mem)
+        cipherText = MemView(value="", retain_mem=retain_mem)
         while target.bsize() > 64:
             realTarget = target.slicing(0, 64 * 8)
             target = target.slicing(64 * 8, (target.bsize() - 64) * 8)
-            keyStream = makeKeyStream(key, Nonce)
+            keyStream = makeKeyStream(key, Nonce, retain_mem)
             cipherText = cipherText.concat(keyStream.xor(realTarget))
             SecureVar.counter = str(int(SecureVar.counter) + 1)
-        keyStream = makeKeyStream(key, Nonce)
+        keyStream = makeKeyStream(key, Nonce, retain_mem)
         cipherText = cipherText.concat(
             keyStream.slicing(0, target.bsize() * 8).xor(target)
         )
