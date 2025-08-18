@@ -8,8 +8,8 @@ class SecureContext:
         CryptoHandler.changeKey()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        for i in range(len(SecureContext.deleteTarget)):
-            SecureContext.deleteTarget[i].clear()
-            del SecureContext.deleteTarget[i]
+        for i in SecureContext.deleteTarget:
+            i.clear()
+            del i
         SecureContext.deleteTarget.clear()
         CryptoHandler.setZero()
