@@ -110,7 +110,7 @@ class SecureVar:
 
     @staticmethod
     @CryptoHandler.useKey
-    def decrypt(key, cipherText):
+    def decrypt(key, cipherText, timeCheck=False):
         Nonce = cipherText.slicing(0, 96)
         target = cipherText.slicing(96, cipherText.bsize() * 8 - 96)
         plainText = MemView("")
@@ -127,4 +127,6 @@ class SecureVar:
 
         keyStream.clear()
         SecureVar.counter = "1000"
+        if timeCheck:
+            print(time.perf_counter())
         return plainText.value()
